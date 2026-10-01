@@ -1,0 +1,5 @@
+# yt-dlp[default] pulls in yt-dlp-ejs, which (with Deno installed) solves
+# YouTube's JavaScript challenges so full-quality streams resolve.
+yt-dlp[default]
+anthropic>=1.11
+faster-whisper

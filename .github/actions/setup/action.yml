@@ -1,0 +1,44 @@
+name: Set up ShortGen
+description: Python + packages, Deno (yt-dlp needs it for YouTube), ffmpeg, caption fonts, and optional YouTube cookies.
+
+inputs:
+  yt-cookies:
+    description: Contents of a Netscape-format YouTube cookies file (from the YT_COOKIES secret). Optional.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+        cache: pip
+
+    - uses: denoland/setup-deno@v2
+      with:
+        deno-version: v2.x
+
+    # fonts-liberation provides an Arial-compatible font for add_captions.py
+    - name: Install ffmpeg and fonts
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq ffmpeg fonts-liberation
+
+    - name: Install Python packages
+      shell: bash
+      run: pip install -r requirements.txt
+
+    - name: Cache Whisper models
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/huggingface
+        key: whisper-models-v1
+
+    - name: Write YouTube cookies
+      if: inputs.yt-cookies != ''
+      shell: bash
+      env:
+        COOKIES: ${{ inputs.yt-cookies }}
+      run: printf '%s\n' "$COOKIES" > "$RUNNER_TEMP/cookies.txt"

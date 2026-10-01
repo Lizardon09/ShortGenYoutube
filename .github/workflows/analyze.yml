@@ -1,0 +1,74 @@
+name: Analyze video
+# The web app finds its run by this name, so keep the request id in it.
+run-name: analyze ${{ inputs.request_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: YouTube video URL
+        required: true
+        type: string
+      request_id:
+        description: Unique id the web app uses to find this run and its results
+        required: true
+        type: string
+      clips:
+        description: How many moments to find
+        default: "8"
+        type: string
+      min_seconds:
+        description: Shortest clip, seconds
+        default: "20"
+        type: string
+      max_seconds:
+        description: Longest clip, seconds
+        default: "60"
+        type: string
+      instructions:
+        description: Optional extra guidance for Claude
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    # Inputs reach the shell only through env vars, never pasted into scripts.
+    env:
+      URL: ${{ inputs.url }}
+      REQUEST_ID: ${{ inputs.request_id }}
+      CLIPS: ${{ inputs.clips }}
+      MIN_SECONDS: ${{ inputs.min_seconds }}
+      MAX_SECONDS: ${{ inputs.max_seconds }}
+      INSTRUCTIONS: ${{ inputs.instructions }}
+    steps:
+      - name: Check inputs
+        run: |
+          [[ "$REQUEST_ID" =~ ^[A-Za-z0-9_-]{1,64}$ ]] || { echo "::error::Invalid request id"; exit 1; }
+          [[ "$CLIPS" =~ ^[0-9]{1,2}$ ]] || { echo "::error::Clips must be a number from 1 to 99"; exit 1; }
+          [[ "$MIN_SECONDS" =~ ^[0-9]+(\.[0-9]+)?$ && "$MAX_SECONDS" =~ ^[0-9]+(\.[0-9]+)?$ ]] \
+            || { echo "::error::Clip lengths must be numbers of seconds"; exit 1; }
+
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+        with:
+          yt-cookies: ${{ secrets.YT_COOKIES }}
+
+      - name: Find moments
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          args=(--clips "$CLIPS" --min "$MIN_SECONDS" --max "$MAX_SECONDS" --out out/moments.json)
+          [ -n "$INSTRUCTIONS" ] && args+=(--instructions "$INSTRUCTIONS")
+          [ -f "$RUNNER_TEMP/cookies.txt" ] && args+=(--cookies "$RUNNER_TEMP/cookies.txt")
+          python find_moments.py "${args[@]}" -- "$URL"
+
+      - name: Publish results
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish_results.sh out "analyses/$REQUEST_ID"

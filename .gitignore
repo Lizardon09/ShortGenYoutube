@@ -1,0 +1,8 @@
+shorts-env/
+__pycache__/
+*.mp4
+*.wav
+*.ass
+moments.json
+out/
+.claude/

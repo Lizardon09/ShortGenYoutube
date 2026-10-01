@@ -1,0 +1,102 @@
+name: Make short
+# The web app finds its run by this name, so keep the request id in it.
+run-name: short ${{ inputs.request_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: YouTube video URL
+        required: true
+        type: string
+      request_id:
+        description: Unique id the web app uses to find this run and its video
+        required: true
+        type: string
+      start:
+        description: Clip start (seconds, or HH:MM:SS / MM:SS)
+        required: true
+        type: string
+      end:
+        description: Clip end (seconds, or HH:MM:SS / MM:SS)
+        required: true
+        type: string
+      mode:
+        description: How to reframe to 9:16 (blurfill, hardcrop, none)
+        default: blurfill
+        type: string
+      zoom:
+        description: Foreground zoom for blurfill
+        default: "1.2"
+        type: string
+      captions:
+        description: Burn in word-by-word captions ("true" / "false")
+        default: "false"
+        type: string
+
+permissions:
+  contents: write
+
+# Finished shorts are kept this long, then deleted to keep the repo small.
+env:
+  KEEP_DAYS: 7
+
+jobs:
+  short:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      URL: ${{ inputs.url }}
+      REQUEST_ID: ${{ inputs.request_id }}
+      START: ${{ inputs.start }}
+      END: ${{ inputs.end }}
+      MODE: ${{ inputs.mode }}
+      ZOOM: ${{ inputs.zoom }}
+      CAPTIONS: ${{ inputs.captions }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Check inputs
+        run: |
+          ts='^([0-9]+:){0,2}[0-9]+(\.[0-9]+)?$'
+          [[ "$REQUEST_ID" =~ ^[A-Za-z0-9_-]{1,64}$ ]] || { echo "::error::Invalid request id"; exit 1; }
+          [[ "$START" =~ $ts && "$END" =~ $ts ]] || { echo "::error::Start/end must be seconds or HH:MM:SS"; exit 1; }
+          [[ "$MODE" =~ ^(blurfill|hardcrop|none)$ ]] || { echo "::error::Mode must be blurfill, hardcrop or none"; exit 1; }
+          [[ "$ZOOM" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::Zoom must be a number"; exit 1; }
+
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+        with:
+          yt-cookies: ${{ secrets.YT_COOKIES }}
+
+      - name: Cut the clip
+        run: |
+          mkdir -p out
+          args=(-o out/short.mp4 --mode "$MODE" --zoom "$ZOOM")
+          [ -f "$RUNNER_TEMP/cookies.txt" ] && args+=(--cookies "$RUNNER_TEMP/cookies.txt")
+          python make_short.py "${args[@]}" -- "$URL" "$START" "$END"
+
+      - name: Add captions
+        if: inputs.captions == 'true'
+        run: |
+          python add_captions.py out/short.mp4 -o out/short_captioned.mp4
+          mv out/short_captioned.mp4 out/short.mp4
+
+      - name: Upload to the "shorts" release
+        run: |
+          # Several runs can race to create the release; whoever loses just uses it.
+          gh release view shorts >/dev/null 2>&1 \
+            || gh release create shorts --prerelease --title "Shorts" \
+                 --notes "Shorts made by the web app. Each is deleted automatically after $KEEP_DAYS days." \
+            || gh release view shorts >/dev/null
+          mv out/short.mp4 "out/$REQUEST_ID.mp4"
+          gh release upload shorts "out/$REQUEST_ID.mp4" --clobber
+
+      - name: Delete old shorts
+        run: |
+          cutoff=$(date -u -d "$KEEP_DAYS days ago" +%Y-%m-%dT%H:%M:%SZ)
+          release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/shorts" --jq .id)
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases/$release_id/assets" \
+            --jq ".[] | select(.created_at < \"$cutoff\") | .id" \
+            | while read -r id; do gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$id"; done
