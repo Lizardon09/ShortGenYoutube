@@ -1,11 +1,15 @@
 name: Set up ShortGen
-description: Python + packages, Deno (yt-dlp needs it for YouTube), ffmpeg, caption fonts, and optional YouTube cookies.
+description: Python + packages, Deno (yt-dlp needs it for YouTube), ffmpeg, optional caption fonts and YouTube cookies.
 
 inputs:
   yt-cookies:
     description: Contents of a Netscape-format YouTube cookies file (from the YT_COOKIES secret). Optional.
     required: false
     default: ""
+  caption-fonts:
+    description: Install fonts for burned-in captions ("true" / "false").
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -19,12 +23,34 @@ runs:
       with:
         deno-version: v2.x
 
-    # fonts-liberation provides an Arial-compatible font for add_captions.py
-    - name: Install ffmpeg and fonts
+    # A prebuilt static ffmpeg downloads in seconds; apt's ffmpeg pulls in
+    # 100+ packages and can take minutes. Fall back to apt if the download fails
+    # (e.g. once this build is superseded on the BtbN releases page).
+    - name: Install ffmpeg
+      shell: bash
+      env:
+        FFMPEG_BUILD: ffmpeg-n8.1-latest-linux64-gpl-8.1
+      run: |
+        if curl -fsSL "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$FFMPEG_BUILD.tar.xz" | tar -xJ -C "$RUNNER_TEMP"; then
+          echo "$RUNNER_TEMP/$FFMPEG_BUILD/bin" >> "$GITHUB_PATH"
+          # The static build's fontconfig would otherwise look for its config
+          # under its own build prefix, and captions would find no fonts.
+          echo "FONTCONFIG_FILE=/etc/fonts/fonts.conf" >> "$GITHUB_ENV"
+        else
+          echo "::warning::Prebuilt ffmpeg download failed -- installing from apt (slower)"
+          sudo rm -f /var/lib/man-db/auto-update  # skip the slow man-page index rebuild
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ffmpeg
+        fi
+
+    # Arial-compatible font for add_captions.py; only needed when burning captions.
+    - name: Install caption fonts
+      if: inputs.caption-fonts == 'true'
       shell: bash
       run: |
+        sudo rm -f /var/lib/man-db/auto-update  # skip the slow man-page index rebuild
         sudo apt-get update -qq
-        sudo apt-get install -y -qq ffmpeg fonts-liberation
+        sudo apt-get install -y -qq --no-install-recommends fonts-liberation
 
     - name: Install Python packages
       shell: bash
@@ -42,3 +68,10 @@ runs:
       env:
         COOKIES: ${{ inputs.yt-cookies }}
       run: printf '%s\n' "$COOKIES" > "$RUNNER_TEMP/cookies.txt"
+
+    - name: Show tool versions
+      shell: bash
+      run: |
+        ffmpeg -hide_banner -version | head -1
+        deno --version | head -1
+        python -m yt_dlp --version

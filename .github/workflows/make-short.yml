@@ -69,6 +69,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           yt-cookies: ${{ secrets.YT_COOKIES }}
+          caption-fonts: ${{ inputs.captions }}
 
       - name: Cut the clip
         run: |
