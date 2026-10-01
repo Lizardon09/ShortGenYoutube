@@ -16,13 +16,17 @@ How it picks moments:
   4. Snaps every clip's start/end onto word boundaries so cuts never land
      mid-word, and blends Claude's score with the replay data.
 
+No Claude API key? It still works on videos that have replay data: the
+most-rewatched stretches become clips, trimmed to whole sentences. That's
+free, but it can't judge hooks and does nothing on low-view videos.
+
 Writes a JSON file of ranked moments. Any start/end pair in it can be fed
 straight into make_short.py.
 
 REQUIREMENTS (install once):
   pip install yt-dlp anthropic faster-whisper
   ffmpeg on your PATH (only used when the video has no captions)
-  ANTHROPIC_API_KEY set in your environment
+  ANTHROPIC_API_KEY set in your environment (optional, see above)
 
 USAGE:
   python find_moments.py <youtube_url> [options]
@@ -36,6 +40,10 @@ EXAMPLES:
 
   # Steer what counts as a good moment
   python find_moments.py "https://youtu.be/XXXXXXXX" --instructions "only the funniest moments"
+
+  # Cheapest Claude model, or no AI at all (replay data only, free)
+  python find_moments.py "https://youtu.be/XXXXXXXX" --model haiku
+  python find_moments.py "https://youtu.be/XXXXXXXX" --model none
 """
 
 import argparse
@@ -45,7 +53,12 @@ import os
 import sys
 import tempfile
 
-MODEL = "claude-opus-5-5"
+MODELS = {
+    "opus": "claude-opus-5-5",      # best picks
+    "sonnet": "claude-sonnet-5-5",  # about half the price
+    "haiku": "claude-haiku-4-5",    # cheapest; no adaptive thinking, 200K context
+}
+REPLAY_ONLY = "replay-data"
 
 # Every viewer starts at 0:00, so the first few heatmap buckets are always
 # near 1.0 regardless of content. Ignore them when judging replay peaks.
@@ -113,9 +126,10 @@ def fail(message):
     sys.exit(1)
 
 
-def check_dependencies():
+def check_dependencies(use_claude):
+    needed = [("yt_dlp", "yt-dlp")] + ([("anthropic", "anthropic")] if use_claude else [])
     missing = []
-    for module, pip_name in (("yt_dlp", "yt-dlp"), ("anthropic", "anthropic")):
+    for module, pip_name in needed:
         try:
             __import__(module)
         except ImportError:
@@ -124,8 +138,6 @@ def check_dependencies():
         print("Missing dependencies: " + ", ".join(missing))
         print("See the REQUIREMENTS section at the top of this script.")
         sys.exit(1)
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        fail("ANTHROPIC_API_KEY is not set.")
 
 
 def fmt_ts(seconds):
@@ -141,6 +153,45 @@ def ydl_opts(cookies=None, **extra):
         opts["cookiefile"] = cookies
     opts.update(extra)
     return opts
+
+
+# When YouTube answers "Sign in to confirm you're not a bot" (common from
+# cloud servers like GitHub's), these clients often still get the page's
+# metadata and replay heatmap through -- though usually not its captions.
+BOT_CHECK_FALLBACK_CLIENTS = (["web_safari"], ["mweb"])
+
+
+def is_bot_check(error):
+    return "not a bot" in str(error)
+
+
+def fetch_video(url, cookies):
+    """Video metadata, heatmap and (if available) caption words. Only the
+    metadata is needed here, so missing video formats aren't an error."""
+    import yt_dlp
+
+    attempts = [{}] + [{"extractor_args": {"youtube": {"player_client": c}}} for c in BOT_CHECK_FALLBACK_CLIENTS]
+    partial, error = None, None
+    for extra in attempts:
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts(cookies, ignore_no_formats_error=True, **extra)) as ydl:
+                info = ydl.extract_info(url, download=False)
+                words, source = caption_words(ydl, info)
+        except yt_dlp.utils.DownloadError as e:
+            if not is_bot_check(e):
+                fail(f"yt-dlp couldn't read the video: {e}")
+            error = e
+            print("YouTube asked for a bot check -- retrying as a different client...")
+            continue
+        # A bot-checked client can still "succeed" with a gutted result (no
+        # duration, no captions). Keep it in case nothing better comes back.
+        if info.get("duration"):
+            return info, words, source
+        partial = partial or (info, words, source)
+        print("YouTube returned partial video info (likely a bot check) -- retrying as a different client...")
+    if partial:
+        return partial
+    fail(f"yt-dlp couldn't read the video: {error} Add a YT_COOKIES secret (see README).")
 
 
 # ---------------------------------------------------------------- transcript
@@ -323,27 +374,36 @@ def build_prompt(info, lines, heatmap, clips, min_len, max_len, instructions):
     return "\n".join(parts)
 
 
-def ask_claude(prompt, effort):
+def open_stream(client, model, prompt, effort):
+    output_format = {"type": "json_schema", "schema": MOMENTS_SCHEMA}
+    messages = [{"role": "user", "content": prompt}]
+    if model == MODELS["haiku"]:
+        # Haiku 4.5 predates adaptive thinking, effort levels and fallbacks.
+        return client.messages.stream(
+            model=model, max_tokens=16000, output_config={"format": output_format},
+            system=SYSTEM_PROMPT, messages=messages,
+        )
+    return client.beta.messages.stream(
+        model=model,
+        max_tokens=64000,
+        # If a safety classifier declines, re-run on Anthropic's
+        # recommended fallback model instead of failing outright.
+        betas=["server-side-fallback-2026-07-01"],
+        fallbacks="default",
+        thinking={"type": "adaptive"},
+        output_config={"effort": effort, "format": output_format},
+        system=SYSTEM_PROMPT,
+        messages=messages,
+    )
+
+
+def ask_claude(prompt, model, effort):
     import anthropic
 
     client = anthropic.Anthropic()
-    print(f"Asking {MODEL} to pick moments (effort: {effort})...")
+    print(f"Asking {model} to pick moments" + ("" if model == MODELS["haiku"] else f" (effort: {effort})") + "...")
     try:
-        with client.beta.messages.stream(
-            model=MODEL,
-            max_tokens=64000,
-            # If a safety classifier declines, re-run on Anthropic's
-            # recommended fallback model instead of failing outright.
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
-            thinking={"type": "adaptive"},
-            output_config={
-                "effort": effort,
-                "format": {"type": "json_schema", "schema": MOMENTS_SCHEMA},
-            },
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": prompt}],
-        ) as stream:
+        with open_stream(client, model, prompt, effort) as stream:
             message = stream.get_final_message()
     except anthropic.AuthenticationError:
         fail("Claude rejected the API key -- check ANTHROPIC_API_KEY.")
@@ -370,6 +430,9 @@ def ask_claude(prompt, effort):
 def snap_to_words(start, end, words, min_len, max_len, duration):
     """Move start/end onto the nearest word boundaries, then nudge to fit the
     length limits without cutting a word in half."""
+    if not words:
+        end = min(end, float(duration)) if duration else end
+        return round(max(0.0, start), 2), round(end, 2)
     starts = [w[1] for w in words]
     i = bisect.bisect_left(starts, start)
     if i > 0 and (i == len(words) or abs(starts[i - 1] - start) <= abs(starts[i] - start)):
@@ -390,33 +453,118 @@ def snap_to_words(start, end, words, min_len, max_len, duration):
     return round(clip_start, 2), round(clip_end, 2)
 
 
-def finalize(raw_moments, words, heatmap, info, min_len, max_len):
+def sentence_starts(words, pause=0.6):
+    """Indices of words that begin a sentence: after . ? ! or a pause.
+    Auto-captions have no punctuation, so pauses do most of the work there."""
+    return [i for i in range(len(words))
+            if i == 0 or words[i - 1][0][-1:] in ".?!" or words[i][1] - words[i - 1][2] > pause]
+
+
+def snap_to_sentences(start, end, words, min_len, max_len, duration, reach=8.0):
+    """Like snap_to_words, but first pull start back to the beginning of its
+    sentence and push end out to the end of its sentence (each within
+    `reach` seconds), so clips picked from replay data don't open or close
+    mid-thought."""
+    if words:
+        span_max = max_len - PAD_BEFORE - PAD_AFTER
+        bounds = sentence_starts(words)
+        starts = [words[b][1] for b in bounds if start - reach <= words[b][1] <= start + 1]
+        if starts:
+            start = max(starts)
+        ends = [words[b - 1][2] for b in bounds[1:]] + [words[-1][2]]
+        forward = [e for e in ends if end - 1 <= e <= end + reach and e - start <= span_max]
+        # No room to finish the sentence? End on the previous one instead.
+        back = [e for e in ends if start + min_len <= e <= min(end, start + span_max)]
+        if forward:
+            end = min(forward)
+        elif back:
+            end = max(back)
+    return snap_to_words(start, end, words, min_len, max_len, duration)
+
+
+def replay_windows(heatmap, duration, clips, min_len, max_len):
+    """Pick clips from the Most Replayed heatmap alone: take the biggest
+    peaks, widen each across its neighbouring hot buckets, and frame it so
+    the peak lands a bit past the middle -- viewers rewind to the payoff, so
+    the clip needs some setup before it."""
+    vals = [p["value"] for p in heatmap]
+    first = next((k for k, p in enumerate(heatmap) if p["start_time"] >= duration * INTRO_SKIP_FRACTION), None)
+    if first is None:
+        return []
+    peaks = [k for k in range(first, len(vals))
+             if (k == first or vals[k] >= vals[k - 1]) and (k == len(vals) - 1 or vals[k] >= vals[k + 1])]
+    peaks.sort(key=lambda k: vals[k], reverse=True)
+
+    target = (min_len + max_len) / 2
+    windows = []
+    for k in peaks:
+        lo = hi = k
+        while lo - 1 >= first and vals[lo - 1] >= 0.8 * vals[k]:
+            lo -= 1
+        while hi + 1 < len(vals) and vals[hi + 1] >= 0.8 * vals[k]:
+            hi += 1
+        hot = heatmap[lo:hi + 1]
+        weight = sum(p["value"] for p in hot) or 1
+        center = sum((p["start_time"] + p["end_time"]) / 2 * p["value"] for p in hot) / weight
+        length = min(max_len, max(hot[-1]["end_time"] - hot[0]["start_time"], target))
+        start = max(0.0, center - 0.6 * length)
+        end = min(float(duration), start + length)
+        if any(min(end, w["end"]) - max(start, w["start"]) > 0 for w in windows):
+            continue
+        windows.append({"start": start, "end": end})
+        if len(windows) >= clips:
+            break
+    return windows
+
+
+def clip_text(words, start, end):
+    return [w[0] for w in words if start <= w[1] < end]
+
+
+def finalize(raw_moments, words, heatmap, info, min_len, max_len, snap=snap_to_words):
+    """Snap, de-duplicate, score and rank. Moments from Claude carry their own
+    titles and scores; moments from replay data get their text from the
+    transcript and are ranked by replay alone."""
     duration = info.get("duration") or 0
+    clamp = lambda v: max(0, min(100, int(v)))  # noqa: E731
     moments = []
     for m in raw_moments:
-        start, end = snap_to_words(m["start"], m["end"], words, min_len, max_len, duration)
+        start, end = snap(m["start"], m["end"], words, min_len, max_len, duration)
         if end <= start:
             continue
-        # Drop clips that mostly overlap one already kept (Claude ranks best first).
+        # Drop clips that mostly overlap one already kept (input is ranked best first).
         if any(min(end, k["end"]) - max(start, k["start"]) > 0.5 * (end - start) for k in moments):
             continue
-        clamp = lambda v: max(0, min(100, int(v)))  # noqa: E731
         replay = replay_score(start, end, heatmap, duration)
-        virality = clamp(m["virality"])
+        scored = "virality" in m
+        virality = clamp(m["virality"]) if scored else None
+        if not scored:
+            score = replay or 0
+        elif replay is None:
+            score = virality
+        else:
+            # Claude's judgment, nudged by what real viewers rewatched
+            score = round(0.6 * virality + 0.4 * replay)
+        text = clip_text(words, start, end)
+        if "title" in m:
+            title = m["title"]
+        elif text:
+            title = " ".join(text[:8]) + ("..." if len(text) > 8 else "")
+        else:
+            title = f"Replay peak at {fmt_ts(start)}"
         moments.append({
             "start": start,
             "end": end,
             "duration": round(end - start, 2),
-            "title": m["title"],
-            "hook": m["hook"],
-            "reason": m["reason"],
-            "scores": {k: clamp(m[f"{k}_score"]) for k in ("hook", "flow", "value", "trend")},
+            "title": title,
+            "hook": m.get("hook", " ".join(text[:25])),
+            "reason": m.get("reason", f"Viewers rewatch this more than {replay}% of the video." if replay is not None else ""),
+            "scores": {k: clamp(m[f"{k}_score"]) for k in ("hook", "flow", "value", "trend")} if scored else None,
             "virality": virality,
             "replay": replay,
-            # Claude's judgment, nudged by what real viewers rewatched
-            "score": virality if replay is None else round(0.6 * virality + 0.4 * replay),
+            "score": score,
         })
-    moments.sort(key=lambda m: m["score"], reverse=True)
+    moments.sort(key=lambda m: m["score"], reverse=True)  # stable: ties keep input order
     for rank, m in enumerate(moments, 1):
         m["rank"] = rank
     return moments
@@ -430,6 +578,10 @@ def main():
     parser.add_argument("--max", dest="max_len", type=float, default=60, help="Longest clip, seconds (default 60)")
     parser.add_argument("--instructions", default="", help="Extra guidance for Claude, e.g. 'only the funniest moments'")
     parser.add_argument("-o", "--out", default="moments.json", help="Where to write the results (default moments.json)")
+    parser.add_argument("--model", default="opus", choices=[*MODELS, "none"],
+                        help="Which Claude picks the moments: opus (best, default), sonnet (cheaper), haiku "
+                             "(cheapest), or none (free: replay data only). Without ANTHROPIC_API_KEY, "
+                             "every choice falls back to none")
     parser.add_argument("--effort", default="high", choices=["low", "medium", "high", "xhigh", "max"],
                         help="How hard Claude thinks (default high). Higher = better picks, slower, pricier")
     parser.add_argument("--whisper-model", default="small", choices=["tiny", "base", "small", "medium", "large"],
@@ -439,36 +591,58 @@ def main():
 
     if args.min_len <= 0 or args.max_len < args.min_len:
         fail("--min must be positive and no larger than --max.")
-    check_dependencies()
+    use_claude = args.model != "none" and bool(os.environ.get("ANTHROPIC_API_KEY"))
+    if args.model != "none" and not use_claude:
+        print("ANTHROPIC_API_KEY isn't set -- picking moments from replay data only (free).")
+    check_dependencies(use_claude)
     import yt_dlp
 
     print(f"Fetching video info: {args.url}")
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts(args.cookies)) as ydl:
-            info = ydl.extract_info(args.url, download=False)
-            words, source = caption_words(ydl, info)
-    except yt_dlp.utils.DownloadError as e:
-        fail(f"yt-dlp couldn't read the video: {e}")
+    info, words, source = fetch_video(args.url, args.cookies)
 
     heatmap = info.get("heatmap")
-    print(f"'{info.get('title')}' -- {fmt_ts(info.get('duration') or 0)}, "
-          f"replay heatmap: {'yes' if heatmap else 'none'}")
+    if not info.get("duration") and heatmap:
+        info["duration"] = heatmap[-1]["end_time"]  # the heatmap spans the whole video
+    duration = info.get("duration") or 0
+    print(f"'{info.get('title')}' -- {fmt_ts(duration)}, replay heatmap: {'yes' if heatmap else 'none'}")
+    if not use_claude and not usable_heatmap(heatmap, duration):
+        fail("YouTube has no replay data for this video yet, so it can't be analyzed without an AI model. "
+             "Add an ANTHROPIC_API_KEY (see README) or try a video with more views.")
 
     if not words:
-        words = whisper_words(args.url, args.cookies, args.whisper_model)
-        source = f"whisper-{args.whisper_model}"
-    if not words:
-        fail("Couldn't get a transcript for this video (no captions, and Whisper heard no speech).")
-    print(f"Transcript: {len(words)} words from {source}")
+        try:
+            words = whisper_words(args.url, args.cookies, args.whisper_model)
+            source = f"whisper-{args.whisper_model}"
+        except yt_dlp.utils.DownloadError as e:
+            print(f"Couldn't download the audio for Whisper: {e}")
+    if words:
+        print(f"Transcript: {len(words)} words from {source}")
+    elif use_claude:
+        fail("Couldn't get a transcript for this video: no captions, and Whisper couldn't get or hear "
+             "the audio. If YouTube is bot-checking, add a YT_COOKIES secret (see README).")
+    else:
+        words, source = [], None
+        print("No transcript -- clips will follow the replay data without sentence trimming.")
 
-    lines = transcript_lines(words)
-    prompt = build_prompt(info, lines, heatmap, args.clips, args.min_len, args.max_len, args.instructions)
-    # Rough guard (~4 chars/token) well under the 1M-token context window
-    if len(prompt) > 3_000_000:
-        fail("This video's transcript is too long to analyze in one pass.")
-
-    raw = ask_claude(prompt, args.effort)
-    moments = finalize(raw, words, heatmap, info, args.min_len, args.max_len)
+    if use_claude:
+        model = MODELS[args.model]
+        lines = transcript_lines(words)
+        prompt = build_prompt(info, lines, heatmap, args.clips, args.min_len, args.max_len, args.instructions)
+        # Rough guard (~4 chars/token) under each model's context window
+        limit = 600_000 if args.model == "haiku" else 3_000_000
+        if len(prompt) > limit:
+            fail("This video's transcript is too long to analyze in one pass"
+                 + (" with Haiku -- try --model sonnet." if args.model == "haiku" else "."))
+        raw = ask_claude(prompt, model, args.effort)
+        moments = finalize(raw, words, heatmap, info, args.min_len, args.max_len)
+    else:
+        model = REPLAY_ONLY
+        if args.instructions:
+            print("Note: --instructions only applies when Claude picks the moments.")
+        raw = replay_windows(heatmap, duration, args.clips, args.min_len, args.max_len)
+        moments = finalize(raw, words, heatmap, info, args.min_len, args.max_len, snap=snap_to_sentences)
+    if not moments:
+        fail("Couldn't find any usable moments in this video.")
 
     result = {
         "video": {
@@ -480,9 +654,9 @@ def main():
             "thumbnail": info.get("thumbnail"),
         },
         "transcript_source": source,
-        "model": MODEL,
+        "model": model,
         "settings": {"clips": args.clips, "min": args.min_len, "max": args.max_len,
-                     "instructions": args.instructions},
+                     "instructions": args.instructions, "model": args.model},
         "heatmap": heatmap,
         "moments": moments,
     }
@@ -492,9 +666,11 @@ def main():
 
     print(f"\nTop moments ({len(moments)}):")
     for m in moments:
-        replay = f", replay {m['replay']}" if m["replay"] is not None else ""
+        parts = [f"virality {m['virality']}" if m["virality"] is not None else "",
+                 f"replay {m['replay']}" if m["replay"] is not None else ""]
+        detail = ", ".join(x for x in parts if x)
         print(f"  {m['rank']}. [{fmt_ts(m['start'])} - {fmt_ts(m['end'])}] {m['duration']:.0f}s  "
-              f"score {m['score']} (virality {m['virality']}{replay})  {m['title']}")
+              f"score {m['score']} ({detail})  {m['title']}")
     if moments:
         best = moments[0]
         print(f"\nMake the top one into a Short:\n  python make_short.py \"{args.url}\" {best['start']} {best['end']}")

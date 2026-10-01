@@ -135,6 +135,9 @@ input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-v
 .btn.ghost { background: transparent; }
 .btn.small { padding: 5px 10px; font-size: 0.85rem; }
 
+.hint { margin: -4px 0 0; font-size: 0.82rem; }
+code { font-size: 0.9em; background: var(--surface-2); border-radius: 4px; padding: 1px 4px; }
+
 .status-text { font-size: 0.9rem; color: var(--muted); }
 .status-text.error { color: var(--bad); }
 .status-text.ok { color: var(--good); }

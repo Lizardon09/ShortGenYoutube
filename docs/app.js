@@ -12,8 +12,16 @@ const API = "https://api.github.com";
 const SETTINGS_KEY = "shortgen.settings";
 const JOBS_KEY = "shortgen.jobs";
 const TITLES_KEY = "shortgen.titles";
+const MODEL_KEY = "shortgen.model";
 const POLL_MS = 5000;
 const RUN_LOOKUP_TIMEOUT_MS = 3 * 60 * 1000;
+
+const PICKERS = {
+  "claude-opus-5-5": "Claude Opus 5.5",
+  "claude-sonnet-5-5": "Claude Sonnet 5.5",
+  "claude-haiku-4-5": "Claude Haiku 4.5",
+  "replay-data": "Replay data only",
+};
 
 const WORKFLOWS = {
   analyze: { file: "analyze.yml", runPrefix: "analyze" },
@@ -226,7 +234,7 @@ async function dispatch(kind, inputs) {
   });
 }
 
-async function startAnalysis({ url, clips, min, max, instructions }) {
+async function startAnalysis({ url, clips, min, max, instructions, model }) {
   const id = requestId(youtubeId(url));
   await dispatch("analyze", {
     url,
@@ -235,6 +243,7 @@ async function startAnalysis({ url, clips, min, max, instructions }) {
     min_seconds: String(min),
     max_seconds: String(max),
     instructions,
+    model,
   });
   addJob({ id, kind: "analyze", label: url, openWhenDone: true });
 }
@@ -424,7 +433,8 @@ function renderAnalysis() {
           h("span", {}, v.channel || ""),
           h("span", {}, fmtTime(v.duration || 0)),
           h("span", {}, `${data.moments.length} moments`),
-          h("span", {}, `Transcript: ${source}`),
+          h("span", {}, `Picked by: ${pickedBy(data)}`),
+          source ? h("span", {}, `Transcript: ${source}`) : null,
           h("a", { href: v.url, target: "_blank", rel: "noopener" }, "Open on YouTube"),
         ),
       ),
@@ -433,6 +443,12 @@ function renderAnalysis() {
     h("ol", { class: "moments" }, data.moments.map((m) => momentCard(m, data))),
   );
   renderShortStatuses();
+}
+
+function pickedBy(data) {
+  const name = PICKERS[data.model] || data.model;
+  const requested = data.settings && data.settings.model;
+  return data.model === "replay-data" && requested && requested !== "none" ? `${name} (no API key set)` : name;
 }
 
 function timeline(data) {
@@ -577,6 +593,10 @@ function momentCard(m, data) {
   };
 
   const replay = m.replay == null ? null : h("span", {}, `replay ${m.replay}`);
+  const virality = m.virality == null ? null : h("span", {}, `virality ${m.virality}`);
+  const scoreTitle = m.virality == null
+    ? "Replay score: more rewatched than this % of the video"
+    : "Overall score: Claude's virality rating blended with replay data";
   return h("li", { class: "moment", id: `moment-${m.rank}` },
     h("div", { class: "moment-top" },
       h("span", { class: "rank" }, `#${m.rank}`),
@@ -585,18 +605,20 @@ function momentCard(m, data) {
         h("div", { class: "meta" },
           h("span", {}, `${fmtTime(m.start)} → ${fmtTime(m.end)}`),
           h("span", {}, `${Math.round(m.duration)}s`),
-          h("span", {}, `virality ${m.virality}`),
+          virality,
           replay,
         ),
       ),
-      h("span", { class: "score", title: "Overall score: Claude's virality rating blended with replay data" }, m.score),
+      h("span", { class: "score", title: scoreTitle }, m.score),
     ),
     m.hook ? h("p", { class: "hook" }, `“${m.hook}”`) : null,
-    h("p", { class: "reason" }, m.reason),
-    h("div", { class: "bars" },
-      scoreBar("Hook", m.scores.hook), scoreBar("Flow", m.scores.flow),
-      scoreBar("Value", m.scores.value), scoreBar("Trend", m.scores.trend),
-    ),
+    m.reason ? h("p", { class: "reason" }, m.reason) : null,
+    m.scores
+      ? h("div", { class: "bars" },
+          scoreBar("Hook", m.scores.hook), scoreBar("Flow", m.scores.flow),
+          scoreBar("Value", m.scores.value), scoreBar("Trend", m.scores.trend),
+        )
+      : null,
     h("div", { class: "row" },
       h("button", { class: "btn", type: "button", onclick: togglePreview }, "Preview"),
       h("button", { class: "btn primary", type: "button", onclick: () => { cut.hidden = !cut.hidden; } }, "Make short…"),
@@ -690,6 +712,8 @@ async function fillTitle(id, el) {
 
 function initForms() {
   const analyze = $("#analyze-form");
+  analyze.elements.model.value = load(MODEL_KEY, "opus");
+  analyze.elements.model.addEventListener("change", () => save(MODEL_KEY, analyze.elements.model.value));
   analyze.addEventListener("submit", async (e) => {
     e.preventDefault();
     const status = $(".status-text", analyze);
@@ -709,7 +733,10 @@ function initForms() {
     button.disabled = true;
     setStatus(status, "Starting…");
     try {
-      await startAnalysis({ url: f.url.value.trim(), clips: Number(f.clips.value), min, max, instructions: f.instructions.value.trim() });
+      await startAnalysis({
+        url: f.url.value.trim(), clips: Number(f.clips.value), min, max,
+        instructions: f.instructions.value.trim(), model: f.model.value,
+      });
       setStatus(status, "Started. Follow it under Activity; results open here when ready.", "ok");
       f.url.value = "";
     } catch (err) {

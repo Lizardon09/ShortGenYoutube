@@ -29,6 +29,10 @@ on:
         description: Optional extra guidance for Claude
         default: ""
         type: string
+      model:
+        description: Who picks the moments (opus, sonnet, haiku, or none = replay data only, free). Without the ANTHROPIC_API_KEY secret every choice runs as none.
+        default: opus
+        type: string
 
 permissions:
   contents: write
@@ -45,6 +49,7 @@ jobs:
       MIN_SECONDS: ${{ inputs.min_seconds }}
       MAX_SECONDS: ${{ inputs.max_seconds }}
       INSTRUCTIONS: ${{ inputs.instructions }}
+      MODEL: ${{ inputs.model }}
     steps:
       - name: Check inputs
         run: |
@@ -52,6 +57,7 @@ jobs:
           [[ "$CLIPS" =~ ^[0-9]{1,2}$ ]] || { echo "::error::Clips must be a number from 1 to 99"; exit 1; }
           [[ "$MIN_SECONDS" =~ ^[0-9]+(\.[0-9]+)?$ && "$MAX_SECONDS" =~ ^[0-9]+(\.[0-9]+)?$ ]] \
             || { echo "::error::Clip lengths must be numbers of seconds"; exit 1; }
+          [[ "$MODEL" =~ ^(opus|sonnet|haiku|none)$ ]] || { echo "::error::Model must be opus, sonnet, haiku or none"; exit 1; }
 
       - uses: actions/checkout@v7
 
@@ -63,7 +69,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          args=(--clips "$CLIPS" --min "$MIN_SECONDS" --max "$MAX_SECONDS" --out out/moments.json)
+          args=(--clips "$CLIPS" --min "$MIN_SECONDS" --max "$MAX_SECONDS" --model "$MODEL" --out out/moments.json)
           [ -n "$INSTRUCTIONS" ] && args+=(--instructions "$INSTRUCTIONS")
           [ -f "$RUNNER_TEMP/cookies.txt" ] && args+=(--cookies "$RUNNER_TEMP/cookies.txt")
           python find_moments.py "${args[@]}" -- "$URL"

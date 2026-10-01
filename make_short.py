@@ -63,6 +63,11 @@ def check_dependencies():
         sys.exit(1)
 
 
+# When YouTube answers "Sign in to confirm you're not a bot" (common from
+# cloud servers like GitHub's), these clients sometimes still get through.
+BOT_CHECK_FALLBACK_CLIENTS = (["web_safari"], ["mweb"])
+
+
 def get_stream_urls(youtube_url, cookies=None):
     """Resolve direct video+audio stream URLs via yt-dlp, without downloading."""
     import yt_dlp
@@ -73,8 +78,16 @@ def get_stream_urls(youtube_url, cookies=None):
     }
     if cookies:
         ydl_opts["cookiefile"] = cookies
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(youtube_url, download=False)
+    attempts = [{}] + [{"extractor_args": {"youtube": {"player_client": c}}} for c in BOT_CHECK_FALLBACK_CLIENTS]
+    for n, extra in enumerate(attempts):
+        try:
+            with yt_dlp.YoutubeDL({**ydl_opts, **extra}) as ydl:
+                info = ydl.extract_info(youtube_url, download=False)
+            break
+        except yt_dlp.utils.DownloadError as e:
+            if "not a bot" not in str(e) or n == len(attempts) - 1:
+                raise
+            print("YouTube asked for a bot check -- retrying as a different client...")
 
     # If yt-dlp already merged into one format with both audio+video
     if info.get("url") and info.get("acodec") != "none" and info.get("vcodec") != "none":
@@ -193,7 +206,15 @@ def main():
     check_dependencies()
 
     print(f"Resolving stream for: {args.url}")
-    video_url, audio_url, title = get_stream_urls(args.url, cookies=args.cookies)
+    import yt_dlp
+    try:
+        video_url, audio_url, title = get_stream_urls(args.url, cookies=args.cookies)
+    except yt_dlp.utils.DownloadError as e:
+        print(f"\nyt-dlp couldn't get the video: {e}")
+        if "not a bot" in str(e):
+            print("YouTube is bot-checking this connection -- pass --cookies (or add the "
+                  "YT_COOKIES secret on GitHub, see README).")
+        sys.exit(1)
 
     out_path = args.output or f"short_{args.start.replace(':', '')}-{args.end.replace(':', '')}.mp4"
 

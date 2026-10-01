@@ -54,9 +54,18 @@
           <label>Min seconds <input name="min" type="number" min="5" max="180" value="20" required></label>
           <label>Max seconds <input name="max" type="number" min="5" max="180" value="60" required></label>
         </div>
-        <label class="span-2"><span>Anything to focus on? <span class="muted">(optional)</span></span>
+        <label>Picked by
+          <select name="model">
+            <option value="opus">Claude Opus 5.5 · best picks</option>
+            <option value="sonnet">Claude Sonnet 5.5 · cheaper</option>
+            <option value="haiku">Claude Haiku 4.5 · cheapest</option>
+            <option value="none">Replay data only · free</option>
+          </select>
+        </label>
+        <label><span>Anything to focus on? <span class="muted">(Claude only)</span></span>
           <input name="instructions" placeholder="e.g. only the funniest moments" autocomplete="off">
         </label>
+        <p class="span-2 hint muted">Without an <code>ANTHROPIC_API_KEY</code> secret in the repo, every option uses replay data, which only works on videos with enough views to have a Most Replayed graph.</p>
         <div class="span-2 row">
           <button class="btn primary" type="submit">Find moments</button>
           <span class="status-text" role="status"></span>
