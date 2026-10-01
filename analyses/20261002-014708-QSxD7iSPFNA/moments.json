@@ -1,0 +1,627 @@
+{
+  "video": {
+    "id": "QSxD7iSPFNA",
+    "url": "https://www.youtube.com/watch?v=QSxD7iSPFNA",
+    "title": "Yu-Gi-Oh Battle Pack Sealed-Only Duels!",
+    "channel": "Team APS",
+    "duration": 1225,
+    "thumbnail": "https://i.ytimg.com/vi/QSxD7iSPFNA/maxresdefault.jpg"
+  },
+  "transcript_source": null,
+  "model": "replay-data",
+  "settings": {
+    "clips": 8,
+    "min": 20.0,
+    "max": 60.0,
+    "instructions": "",
+    "model": "none"
+  },
+  "heatmap": [
+    {
+      "start_time": 0.0,
+      "end_time": 12.26,
+      "value": 1.0
+    },
+    {
+      "start_time": 12.26,
+      "end_time": 24.52,
+      "value": 0.2262738048697269
+    },
+    {
+      "start_time": 24.52,
+      "end_time": 36.78,
+      "value": 0.18616183341311202
+    },
+    {
+      "start_time": 36.78,
+      "end_time": 49.04,
+      "value": 0.12589399679240434
+    },
+    {
+      "start_time": 49.04,
+      "end_time": 61.3,
+      "value": 0.27111866546834046
+    },
+    {
+      "start_time": 61.3,
+      "end_time": 73.56,
+      "value": 0.3496462831616211
+    },
+    {
+      "start_time": 73.56,
+      "end_time": 85.82,
+      "value": 0.3814955181792491
+    },
+    {
+      "start_time": 85.82,
+      "end_time": 98.08,
+      "value": 0.22407234013849764
+    },
+    {
+      "start_time": 98.08,
+      "end_time": 110.34,
+      "value": 0.24832015109484917
+    },
+    {
+      "start_time": 110.34,
+      "end_time": 122.6,
+      "value": 0.37129116141751967
+    },
+    {
+      "start_time": 122.6,
+      "end_time": 134.86,
+      "value": 0.31136684319101937
+    },
+    {
+      "start_time": 134.86,
+      "end_time": 147.12,
+      "value": 0.16959073143600686
+    },
+    {
+      "start_time": 147.12,
+      "end_time": 159.38,
+      "value": 0.15546988731748476
+    },
+    {
+      "start_time": 159.38,
+      "end_time": 171.64,
+      "value": 0.1641708055055935
+    },
+    {
+      "start_time": 171.64,
+      "end_time": 183.9,
+      "value": 0.22882674367934047
+    },
+    {
+      "start_time": 183.9,
+      "end_time": 196.16,
+      "value": 0.22611317434368006
+    },
+    {
+      "start_time": 196.16,
+      "end_time": 208.42,
+      "value": 0.2298769559026332
+    },
+    {
+      "start_time": 208.42,
+      "end_time": 220.68,
+      "value": 0.1579103940456564
+    },
+    {
+      "start_time": 220.68,
+      "end_time": 232.94,
+      "value": 0.16215263107012898
+    },
+    {
+      "start_time": 232.94,
+      "end_time": 245.2,
+      "value": 0.14074889981710284
+    },
+    {
+      "start_time": 245.2,
+      "end_time": 257.46,
+      "value": 0.12076818352878055
+    },
+    {
+      "start_time": 257.46,
+      "end_time": 269.72,
+      "value": 0.43589140980202823
+    },
+    {
+      "start_time": 269.72,
+      "end_time": 281.98,
+      "value": 0.16560326204101314
+    },
+    {
+      "start_time": 281.98,
+      "end_time": 294.24,
+      "value": 0.17948655004913178
+    },
+    {
+      "start_time": 294.24,
+      "end_time": 306.5,
+      "value": 0.5144078833462673
+    },
+    {
+      "start_time": 306.5,
+      "end_time": 318.76,
+      "value": 0.6479756483008098
+    },
+    {
+      "start_time": 318.76,
+      "end_time": 331.02,
+      "value": 0.4954341647477319
+    },
+    {
+      "start_time": 331.02,
+      "end_time": 343.28,
+      "value": 0.17606343893518647
+    },
+    {
+      "start_time": 343.28,
+      "end_time": 355.54,
+      "value": 0.11720341789812867
+    },
+    {
+      "start_time": 355.54,
+      "end_time": 367.8,
+      "value": 0.18074568411098496
+    },
+    {
+      "start_time": 367.8,
+      "end_time": 380.06,
+      "value": 0.1586921870568943
+    },
+    {
+      "start_time": 380.06,
+      "end_time": 392.32,
+      "value": 0.15607615998131746
+    },
+    {
+      "start_time": 392.32,
+      "end_time": 404.58,
+      "value": 0.17670407272523075
+    },
+    {
+      "start_time": 404.58,
+      "end_time": 416.84,
+      "value": 0.1512736818197479
+    },
+    {
+      "start_time": 416.84,
+      "end_time": 429.1,
+      "value": 0.11170230993754417
+    },
+    {
+      "start_time": 429.1,
+      "end_time": 441.36,
+      "value": 0.08404781000909889
+    },
+    {
+      "start_time": 441.36,
+      "end_time": 453.62,
+      "value": 0.08020779937510422
+    },
+    {
+      "start_time": 453.62,
+      "end_time": 465.88,
+      "value": 0.10043511091694152
+    },
+    {
+      "start_time": 465.88,
+      "end_time": 478.14,
+      "value": 0.17173802322050616
+    },
+    {
+      "start_time": 478.14,
+      "end_time": 490.4,
+      "value": 0.535828671338521
+    },
+    {
+      "start_time": 490.4,
+      "end_time": 502.66,
+      "value": 0.17504285157476268
+    },
+    {
+      "start_time": 502.66,
+      "end_time": 514.92,
+      "value": 0.2520513669738252
+    },
+    {
+      "start_time": 514.92,
+      "end_time": 527.18,
+      "value": 0.36174434040521425
+    },
+    {
+      "start_time": 527.18,
+      "end_time": 539.44,
+      "value": 0.4210154567180289
+    },
+    {
+      "start_time": 539.44,
+      "end_time": 551.7,
+      "value": 0.33601389328678627
+    },
+    {
+      "start_time": 551.7,
+      "end_time": 563.96,
+      "value": 0.2241667868016252
+    },
+    {
+      "start_time": 563.96,
+      "end_time": 576.22,
+      "value": 0.19722404200328833
+    },
+    {
+      "start_time": 576.22,
+      "end_time": 588.48,
+      "value": 0.1335322894134268
+    },
+    {
+      "start_time": 588.48,
+      "end_time": 600.74,
+      "value": 0.1135442984722579
+    },
+    {
+      "start_time": 600.74,
+      "end_time": 613.0,
+      "value": 0.10677164310602665
+    },
+    {
+      "start_time": 613.0,
+      "end_time": 625.26,
+      "value": 0.1221655050387496
+    },
+    {
+      "start_time": 625.26,
+      "end_time": 637.52,
+      "value": 0.09972360343458958
+    },
+    {
+      "start_time": 637.52,
+      "end_time": 649.78,
+      "value": 0.10998919110410874
+    },
+    {
+      "start_time": 649.78,
+      "end_time": 662.04,
+      "value": 0.124043046504503
+    },
+    {
+      "start_time": 662.04,
+      "end_time": 674.3,
+      "value": 0.09064218994663407
+    },
+    {
+      "start_time": 674.3,
+      "end_time": 686.56,
+      "value": 0.1496148752349055
+    },
+    {
+      "start_time": 686.56,
+      "end_time": 698.82,
+      "value": 0.24008926834853958
+    },
+    {
+      "start_time": 698.82,
+      "end_time": 711.08,
+      "value": 0.2260404587711836
+    },
+    {
+      "start_time": 711.08,
+      "end_time": 723.34,
+      "value": 0.1586931157359811
+    },
+    {
+      "start_time": 723.34,
+      "end_time": 735.6,
+      "value": 0.1893674788408983
+    },
+    {
+      "start_time": 735.6,
+      "end_time": 747.86,
+      "value": 0.26311989058179175
+    },
+    {
+      "start_time": 747.86,
+      "end_time": 760.12,
+      "value": 0.0967454534270998
+    },
+    {
+      "start_time": 760.12,
+      "end_time": 772.38,
+      "value": 0.07335193436269567
+    },
+    {
+      "start_time": 772.38,
+      "end_time": 784.64,
+      "value": 0.06800851611104984
+    },
+    {
+      "start_time": 784.64,
+      "end_time": 796.9,
+      "value": 0.06440381727966554
+    },
+    {
+      "start_time": 796.9,
+      "end_time": 809.16,
+      "value": 0.07718824575832792
+    },
+    {
+      "start_time": 809.16,
+      "end_time": 821.42,
+      "value": 0.07707473021795139
+    },
+    {
+      "start_time": 821.42,
+      "end_time": 833.68,
+      "value": 0.0852741926551576
+    },
+    {
+      "start_time": 833.68,
+      "end_time": 845.94,
+      "value": 0.07262194616651643
+    },
+    {
+      "start_time": 845.94,
+      "end_time": 858.2,
+      "value": 0.09978627379496381
+    },
+    {
+      "start_time": 858.2,
+      "end_time": 870.46,
+      "value": 0.14438591668070777
+    },
+    {
+      "start_time": 870.46,
+      "end_time": 882.72,
+      "value": 0.12307592010350933
+    },
+    {
+      "start_time": 882.72,
+      "end_time": 894.98,
+      "value": 0.2144864526926075
+    },
+    {
+      "start_time": 894.98,
+      "end_time": 907.24,
+      "value": 0.3264670722744809
+    },
+    {
+      "start_time": 907.24,
+      "end_time": 919.5,
+      "value": 0.1328071148705141
+    },
+    {
+      "start_time": 919.5,
+      "end_time": 931.76,
+      "value": 0.09721915715129176
+    },
+    {
+      "start_time": 931.76,
+      "end_time": 944.02,
+      "value": 0.08012011659132551
+    },
+    {
+      "start_time": 944.02,
+      "end_time": 956.28,
+      "value": 0.06244562003522356
+    },
+    {
+      "start_time": 956.28,
+      "end_time": 968.54,
+      "value": 0.03054173225333734
+    },
+    {
+      "start_time": 968.54,
+      "end_time": 980.8,
+      "value": 0.06469132084695409
+    },
+    {
+      "start_time": 980.8,
+      "end_time": 993.06,
+      "value": 0.06672949283875435
+    },
+    {
+      "start_time": 993.06,
+      "end_time": 1005.32,
+      "value": 0.05205430469533646
+    },
+    {
+      "start_time": 1005.32,
+      "end_time": 1017.58,
+      "value": 0.060588741679151466
+    },
+    {
+      "start_time": 1017.58,
+      "end_time": 1029.84,
+      "value": 0.06034313701666239
+    },
+    {
+      "start_time": 1029.84,
+      "end_time": 1042.1,
+      "value": 0.043889729635824375
+    },
+    {
+      "start_time": 1042.1,
+      "end_time": 1054.36,
+      "value": 0.05929359034671522
+    },
+    {
+      "start_time": 1054.36,
+      "end_time": 1066.62,
+      "value": 0.12087674611402749
+    },
+    {
+      "start_time": 1066.62,
+      "end_time": 1078.88,
+      "value": 0.18362152463907894
+    },
+    {
+      "start_time": 1078.88,
+      "end_time": 1091.14,
+      "value": 0.3046389346787871
+    },
+    {
+      "start_time": 1091.14,
+      "end_time": 1103.4,
+      "value": 0.4998510243964925
+    },
+    {
+      "start_time": 1103.4,
+      "end_time": 1115.66,
+      "value": 0.2894519050566793
+    },
+    {
+      "start_time": 1115.66,
+      "end_time": 1127.92,
+      "value": 0.27420831887818536
+    },
+    {
+      "start_time": 1127.92,
+      "end_time": 1140.18,
+      "value": 0.2674666349594989
+    },
+    {
+      "start_time": 1140.18,
+      "end_time": 1152.44,
+      "value": 0.1912179957452258
+    },
+    {
+      "start_time": 1152.44,
+      "end_time": 1164.7,
+      "value": 0.11373133444033945
+    },
+    {
+      "start_time": 1164.7,
+      "end_time": 1176.96,
+      "value": 0.01028470298072245
+    },
+    {
+      "start_time": 1176.96,
+      "end_time": 1189.22,
+      "value": 0.0
+    },
+    {
+      "start_time": 1189.22,
+      "end_time": 1201.48,
+      "value": 0.016543752377998888
+    },
+    {
+      "start_time": 1201.48,
+      "end_time": 1213.74,
+      "value": 0.07800896590128754
+    },
+    {
+      "start_time": 1213.74,
+      "end_time": 1226.0,
+      "value": 0.15993968167419295
+    }
+  ],
+  "moments": [
+    {
+      "start": 288.63,
+      "end": 328.63,
+      "duration": 40.0,
+      "title": "Replay peak at 4:48",
+      "hook": "",
+      "reason": "Viewers rewatch this more than 97% of the video.",
+      "scores": null,
+      "virality": null,
+      "replay": 97,
+      "score": 97,
+      "rank": 1
+    },
+    {
+      "start": 1073.27,
+      "end": 1113.27,
+      "duration": 40.0,
+      "title": "Replay peak at 17:53",
+      "hook": "",
+      "reason": "Viewers rewatch this more than 89% of the video.",
+      "scores": null,
+      "virality": null,
+      "replay": 89,
+      "score": 89,
+      "rank": 2
+    },
+    {
+      "start": 503.64,
+      "end": 543.64,
+      "duration": 40.0,
+      "title": "Replay peak at 8:23",
+      "hook": "",
+      "reason": "Viewers rewatch this more than 89% of the video.",
+      "scores": null,
+      "virality": null,
+      "replay": 89,
+      "score": 89,
+      "rank": 3
+    },
+    {
+      "start": 49.83,
+      "end": 89.83,
+      "duration": 40.0,
+      "title": "Replay peak at 0:49",
+      "hook": "",
+      "reason": "Viewers rewatch this more than 87% of the video.",
+      "scores": null,
+      "virality": null,
+      "replay": 87,
+      "score": 87,
+      "rank": 4
+    },
+    {
+      "start": 98.06,
+      "end": 138.06,
+      "duration": 40.0,
+      "title": "Replay peak at 1:38",
+      "hook": "",
+      "reason": "Viewers rewatch this more than 85% of the video.",
+      "scores": null,
+      "virality": null,
+      "replay": 85,
+      "score": 85,
+      "rank": 5
+    },
+    {
+      "start": 460.27,
+      "end": 500.27,
+      "duration": 40.0,
+      "title": "Replay peak at 7:40",
+      "hook": "",
+      "reason": "Viewers rewatch this more than 82% of the video.",
+      "scores": null,
+      "virality": null,
+      "replay": 82,
+      "score": 82,
+      "rank": 6
+    },
+    {
+      "start": 239.59,
+      "end": 279.59,
+      "duration": 40.0,
+      "title": "Replay peak at 3:59",
+      "hook": "",
+      "reason": "Viewers rewatch this more than 76% of the video.",
+      "scores": null,
+      "virality": null,
+      "replay": 76,
+      "score": 76,
+      "rank": 7
+    },
+    {
+      "start": 877.11,
+      "end": 917.11,
+      "duration": 40.0,
+      "title": "Replay peak at 14:37",
+      "hook": "",
+      "reason": "Viewers rewatch this more than 70% of the video.",
+      "scores": null,
+      "virality": null,
+      "replay": 70,
+      "score": 70,
+      "rank": 8
+    }
+  ]
+}
