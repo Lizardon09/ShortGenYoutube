@@ -6,3 +6,5 @@ __pycache__/
 moments.json
 out/
 .claude/
+web/node_modules/
+web/dist/

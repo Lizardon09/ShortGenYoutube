@@ -1,9 +1,9 @@
 # ShortGen
 
-Turn long YouTube videos into Shorts, from any device. A static web page on GitHub Pages starts GitHub Actions workflows in this repo. The workflows find the best moments and cut them.
+Turn long YouTube videos into Shorts, from any device. A React web app on GitHub Pages starts GitHub Actions workflows in this repo. The workflows find the best moments and cut them.
 
 ```
-GitHub Pages (docs/)  --GitHub API-->  Actions: analyze.yml     --> results branch: analyses/<id>/moments.json
+GitHub Pages (web/)   --GitHub API-->  Actions: analyze.yml     --> results branch: analyses/<id>/moments.json
   your phone/laptop                    Actions: make-short.yml  --> "shorts" release: <id>.mp4 (kept 7 days)
 ```
 
@@ -31,7 +31,7 @@ The Claude costs are estimates, not measured yet; each run prints its token usag
 
 1. **Repository:** push this folder to a **public** GitHub repo. On a free GitHub plan, Pages only works for public repos. Anyone can see the repo and download the shorts it makes; your secrets stay private.
 2. **Claude API key (optional):** go to repo Settings → Secrets and variables → Actions → New repository secret. Name it `ANTHROPIC_API_KEY`. Skip this step to use the free replay-data mode.
-3. **Pages:** in repo Settings → Pages, choose "Deploy from a branch", then `main` / `/docs`.
+3. **Pages:** in repo Settings → Pages, set **Source** to **GitHub Actions**. The "Deploy web app" workflow then builds `web/` and publishes it on every push that changes it.
 4. **Token for the web page:** create a fine-grained personal access token (GitHub Settings → Developer settings). Limit it to this repo only, with **Actions: Read and write** and **Contents: Read-only**. Paste it into the page's Settings. It's stored only in that browser.
 5. **Optional: YouTube cookies.** If runs fail with "Sign in to confirm you're not a bot", YouTube is blocking GitHub's servers. The scripts first retry as other YouTube clients. That usually still gets the replay data, but not always the captions or the video itself. Export YouTube cookies in Netscape format with a browser extension, then save the file's contents as a secret named `YT_COOKIES`. Use a throwaway Google account, since accounts used this way can get flagged.
 
@@ -46,3 +46,15 @@ python add_captions.py short_3228-3604.mp4
 ```
 
 `find_moments.py` uses Claude when `ANTHROPIC_API_KEY` is set and replay data otherwise; `--model none` forces the free mode. Install dependencies with `pip install -r requirements.txt`.
+
+## Web app development
+
+The frontend in `web/` uses React, TypeScript, Material UI and Vite. You need Node 20 or newer.
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+`npm run dev` serves the app locally with hot reload. Everything else comes from GitHub: connect it to your repo in Settings and it drives the same workflows as the live site.
